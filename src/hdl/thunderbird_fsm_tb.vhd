@@ -58,27 +58,113 @@ architecture test_bench of thunderbird_fsm_tb is
 	
 	component thunderbird_fsm is 
 	  port(
+	      i_clk, i_reset : in std_logic;
+          i_left, i_right : in std_logic;
+          o_lights_L : out std_logic_vector(2 downto 0);
+          o_lights_R : out std_logic_vector(2 downto 0)
 		
 	  );
 	end component thunderbird_fsm;
 
 	-- test I/O signals
+	signal w_reset : std_logic := '0';
+	signal w_left : std_logic := '0';
+	signal w_right : std_logic := '0';
+	signal w_clk : std_logic := '0';
 	
 	-- constants
+	signal w_left_output : std_logic_vector(2 downto 0);
+	signal w_right_output : std_logic_vector(2 downto 0);
 	
-	
+	constant k_clk_period : time := 10 ns;
 begin
 	-- PORT MAPS ----------------------------------------
-	
+	uut: thunderbird_fsm port map (
+              i_left => w_left,
+              i_right => w_right,
+              i_reset => w_reset,
+              i_clk => w_clk,
+              o_lights_L => w_left_output,
+              o_lights_R => w_right_output
+            );
 	-----------------------------------------------------
 	
 	-- PROCESSES ----------------------------------------	
     -- Clock process ------------------------------------
+    clk_proc : process
+        begin
+            w_clk <= '0';
+            wait for k_clk_period/2;
+            w_clk <= '1';
+            wait for k_clk_period/2;
+     end process;
     
 	-----------------------------------------------------
 	
 	-- Test Plan Process --------------------------------
 	
 	-----------------------------------------------------	
+	sim_proc: process
+        begin
+            -- sequential timing        
+            w_reset <= '1';
+            wait for k_clk_period*1;
+              assert w_left_output = "000" report "bad reset" severity failure;
+              assert w_right_output = "000" report "bad reset" severity failure;
+            
+            w_reset <= '0';
+            wait for k_clk_period*1;
+            -- ON sequence
+            w_right <= '1'; 
+            w_left <= '1'; wait for k_clk_period;
+                assert w_right_output = "111" and w_left_output = "111" report "Should be left turn signal sequence" severity failure;
+                wait for k_clk_period;
+            w_left <= '0'; w_right <= '0'; wait for k_clk_period;
+                assert w_right_output = "000" and w_left_output = "000" report "Should be left turn signal sequence" severity failure;
+                wait for k_clk_period;
+                
+            wait for k_clk_period * 2;
+                assert w_right_output <= "000" report "bad stay off" severity failure;
+                assert w_left_output <= "000" report "bad stay off" severity failure;
+            
+            
+            -- Left signal input
+            w_left <= '1'; w_right <= '0'; wait for k_clk_period;
+                assert w_left_output = "001" report "Should be left turn signal sequence 1" severity failure;
+                assert w_right_output = "000" report "bad left turn 1" severity failure;
+                
+                
+            w_left <= '1'; w_right <= '1'; wait for k_clk_period;
+                assert w_left_output = "011" report "Should be left turn signal sequence 2" severity failure;
+                assert w_right_output = "000" report "bad left turn 2" severity failure;
+            
+            w_left <= '0'; w_right <= '0'; wait for k_clk_period;
+                assert w_left_output = "111" report "Should be left turn signal sequence 3" severity failure;
+                assert w_right_output = "000" report "bad left turn 3" severity failure;
+                
+                
+                wait for k_clk_period;
+                    assert w_left_output = "000" report "Should be left turn signal sequence 0" severity failure;
+                    assert w_left_output = "000" report "Should be left turn signal sequence 0" severity failure;
+                wait for k_clk_period;
+            -- Right signal input  
+            w_left <= '0'; w_right <= '1'; wait for k_clk_period;
+                assert w_left_output = "000" report "Should be right turn signal sequence 1" severity failure;
+                assert w_right_output = "001" report "bad right turn 1" severity failure;
+                
+                
+            w_left <= '1'; w_right <= '1'; wait for k_clk_period;
+                assert w_left_output = "000" report "Should be right turn signal sequence 2" severity failure;
+                assert w_right_output = "011" report "bad right turn 2" severity failure;
+            
+            w_left <= '0'; w_right <= '0'; wait for k_clk_period;
+                assert w_left_output = "000" report "Should be right turn signal sequence 3" severity failure;
+                assert w_right_output = "111" report "bad right turn 3" severity failure;
+            wait for k_clk_period;
+                assert w_left_output = "000" report "Should be left turn signal sequence 0" severity failure;
+                assert w_left_output = "000" report "Should be left turn signal sequence 0" severity failure;
+        
+            wait;
+        end process;
 	
 end test_bench;
